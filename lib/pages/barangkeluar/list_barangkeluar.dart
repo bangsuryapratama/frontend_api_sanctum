@@ -1,22 +1,23 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:flutter_api/models/datapusats_model.dart';
-import 'package:flutter_api/services/datapusats_service.dart';
-import 'package:flutter_api/pages/datapusat/create_datapusat.dart';
-import 'package:flutter_api/pages/datapusat/edit_datapusat.dart';
-import 'package:flutter_api/pages/datapusat/detail_datapusat.dart';
 
-class ListDataPusatPage extends StatefulWidget {
+import 'package:flutter/material.dart';
+import 'package:flutter_api/models/barangkeluars_model.dart';
+import 'package:flutter_api/services/barangkeluars_service.dart';
+import 'package:flutter_api/pages/barangkeluar/create_barangkeluar.dart';
+import 'package:flutter_api/pages/barangkeluar/detail_barangkeluar.dart';
+import 'package:flutter_api/pages/barangkeluar/edit_barangkeluar.dart';
+
+class ListBarangKeluarsPage extends StatefulWidget {
   @override
-  State<ListDataPusatPage> createState() => _ListDataPusatPageState();
+  State<ListBarangKeluarsPage> createState() => _ListBarangKeluarsPageState();
 }
 
-class _ListDataPusatPageState extends State<ListDataPusatPage> {
-  List<DataPusats> allData = [];
-  List<DataPusats> filteredData = [];
+class _ListBarangKeluarsPageState extends State<ListBarangKeluarsPage> {
+  List<DataKeluar> allData = [];
+  List<DataKeluar> filteredData = [];
   bool isLoading = false;
   final searchController = TextEditingController();
-  Timer? _debounceTimer;
+  final _debounceTimer = ValueNotifier<Timer?>(null);
 
   @override
   void initState() {
@@ -27,7 +28,8 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
   @override
   void dispose() {
     searchController.dispose();
-    _debounceTimer?.cancel();
+    _debounceTimer.value?.cancel();
+    _debounceTimer.dispose();
     super.dispose();
   }
 
@@ -35,39 +37,40 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
     if (!mounted) return;
     setState(() => isLoading = true);
     try {
-      final data = await DataPusatService.listDataPusat();
+      final barangKeluars = await BarangKeluarsService.getBarangKeluars();
       if (!mounted) return;
       setState(() {
-        allData = data.data ?? [];
+        allData = barangKeluars.data ?? [];
         filteredData = allData;
         isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => isLoading = false);
-      _showSnackBar('Error: ${e.toString()}', Colors.red);
+      _showSnackBar('Error: $e', Colors.red);
     }
   }
 
   void _search(String query) {
     // Cancel previous timer
-    _debounceTimer?.cancel();
+    _debounceTimer.value?.cancel();
     
     // Set new timer for debounced search
-    _debounceTimer = Timer(Duration(milliseconds: 300), () {
+    _debounceTimer.value = Timer(Duration(milliseconds: 300), () {
       if (!mounted) return;
       setState(() {
-        filteredData = query.isEmpty ? allData : allData.where((item) {
-          final searchTerm = query.toLowerCase();
-          return (item.nama ?? '').toLowerCase().contains(searchTerm) ||
-                 (item.kodeBarang ?? '').toLowerCase().contains(searchTerm) ||
-                 (item.merk ?? '').toLowerCase().contains(searchTerm);
-        }).toList();
+        filteredData = query.isEmpty
+            ? allData
+            : allData.where((item) {
+                final searchTerm = query.toLowerCase();
+                return (item.kodeBarang ?? '').toLowerCase().contains(searchTerm) ||
+                    (item.ket ?? '').toLowerCase().contains(searchTerm);
+              }).toList();
       });
     });
   }
 
-  void _showSnackBar(String message, [Color? color]) {
+  void _showSnackBar(String message, Color color) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -80,13 +83,13 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
     );
   }
 
-  Future<void> _deleteItem(DataPusats item) async {
+  Future<void> _deleteItem(DataKeluar item) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Hapus Item?'),
-        content: Text('${item.nama ?? "Item"} akan dihapus permanen dan tidak dapat dikembalikan'),
+        title: Text('Hapus ${item.kodeBarang ?? 'Item'}?'),
+        content: Text('Data akan dihapus permanen dan tidak dapat dikembalikan'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -106,9 +109,9 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
 
     if (confirm == true && item.id != null) {
       try {
-        final success = await DataPusatService.deleteDataPusat(item.id!);
+        final success = await BarangKeluarsService.deleteBarangKeluar(item.id!);
         if (success) {
-          _showSnackBar('Berhasil dihapus', Colors.green);
+          _showSnackBar('Data berhasil dihapus', Colors.green);
           _loadData();
         } else {
           _showSnackBar('Gagal menghapus data', Colors.red);
@@ -122,79 +125,56 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
   Future<void> _navigateToCreate() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => CreateDataPusatPage()),
+      MaterialPageRoute(builder: (context) => CreateBarangKeluarPage()),
     );
     if (result == true) {
       _loadData();
-      _showSnackBar('Berhasil ditambahkan', Colors.green);
+      _showSnackBar('Data berhasil ditambahkan', Colors.green);
     }
   }
 
-  Future<void> _navigateToEdit(DataPusats item) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => EditDataPusatPage(data: item)),
-    );
-    if (result == true) {
-      _loadData();
-      _showSnackBar('Berhasil diupdate', Colors.green);
-    }
-  }
-
-  Future<void> _navigateToDetail(DataPusats item) async {
+  Future<void> _navigateToDetail(DataKeluar item) async {
     if (item.id == null) return;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => DetailDataPusatPage(id: item.id!)),
+      MaterialPageRoute(builder: (context) => DetailBarangKeluarPage(id: item.id!)),
     );
     if (result == true) _loadData();
   }
 
-  Widget _buildStockBadge(int stock) {
-    Color color;
-    String label;
-    
-    if (stock == 0) {
-      color = Colors.red;
-      label = 'Habis';
-    } else if (stock <= 5) {
-      color = Colors.orange;
-      label = 'Sedikit';
-    } else if (stock <= 20) {
-      color = Colors.blue;
-      label = 'Normal';
-    } else {
-      color = Colors.green;
-      label = 'Banyak';
+  Future<void> _navigateToEdit(DataKeluar item) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => EditBarangKeluarPage(barangKeluar: item)),
+    );
+    if (result == true) {
+      _loadData();
+      _showSnackBar('Data berhasil diupdate', Colors.green);
     }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Widget _buildQuantityBadge(int quantity) {
+    Color color = quantity == 0 ? Colors.red : quantity <= 5 ? Colors.orange : Colors.blue;
     
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3), width: 0.5),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$stock',
-            style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
-          ),
-          SizedBox(width: 2),
-          Text(
-            label,
-            style: TextStyle(color: color, fontSize: 10),
-          ),
-        ],
+      child: Text(
+        '$quantity',
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
       ),
     );
   }
 
-  Widget _buildItemCard(DataPusats item) {
-    final imageUrl = item.foto != null ? 'http://127.0.0.1:8000/storage/${item.foto!}' : null;
-
+  Widget _buildItemCard(DataKeluar item) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
@@ -207,45 +187,19 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
             padding: EdgeInsets.all(12),
             child: Row(
               children: [
-                // Image
+                // Icon
                 Container(
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
-                    color: Colors.grey[100],
-                    border: Border.all(color: Colors.grey[300]!, width: 0.5),
                   ),
-                  child: imageUrl != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                      : null,
-                                  strokeWidth: 2,
-                                ),
-                              );
-                            },
-                            errorBuilder: (_, __, ___) => Icon(
-                              Icons.inventory_2, 
-                              color: Colors.grey[600], 
-                              size: 24,
-                            ),
-                          ),
-                        )
-                      : Icon(
-                          Icons.inventory_2, 
-                          color: Colors.grey[600], 
-                          size: 24,
-                        ),
+                  child: Icon(
+                    Icons.outbox,
+                    color: Colors.orange,
+                    size: 24,
+                  ),
                 ),
                 SizedBox(width: 12),
                 
@@ -255,36 +209,36 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.nama ?? 'Tanpa Nama',
+                        item.kodeBarang ?? 'Tanpa Kode',
                         style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (item.kodeBarang != null) ...[
-                        SizedBox(height: 2),
-                        Text(
-                          item.kodeBarang!,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                      ],
                       SizedBox(height: 4),
                       Row(
                         children: [
-                          _buildStockBadge(item.stok ?? 0),
-                          if (item.merk != null) ...[
-                            SizedBox(width: 8),
-                            Icon(Icons.label_outline, size: 12, color: Colors.grey[500]),
-                            SizedBox(width: 2),
-                            Expanded(
-                              child: Text(
-                                item.merk!,
-                                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                          Icon(Icons.remove_circle_outline, size: 14, color: Colors.grey[600]),
+                          SizedBox(width: 4),
+                          _buildQuantityBadge(item.jumlah ?? 0),
+                          Text(' unit', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                          SizedBox(width: 12),
+                          Icon(Icons.calendar_today, size: 14, color: Colors.grey[600]),
+                          SizedBox(width: 4),
+                          Text(
+                            _formatDate(item.tglKeluar),
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          ),
                         ],
                       ),
+                      if (item.ket != null && item.ket!.isNotEmpty) ...[
+                        SizedBox(height: 4),
+                        Text(
+                          item.ket!,
+                          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -305,7 +259,7 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
                       value: 'edit',
                       child: Row(
                         children: [
-                          Icon(Icons.edit, size: 16, color: Colors.blue),
+                          Icon(Icons.edit, size: 16, color: Colors.orange),
                           SizedBox(width: 8),
                           Text('Edit', style: TextStyle(fontSize: 13)),
                         ],
@@ -338,28 +292,28 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            isEmpty ? Icons.inventory_2_outlined : Icons.search_off,
+            isEmpty ? Icons.outbox_outlined : Icons.search_off,
             size: 64,
             color: Colors.grey[400],
           ),
           SizedBox(height: 16),
           Text(
-            isEmpty ? 'Belum ada data inventaris' : 'Tidak ditemukan',
+            isEmpty ? 'Belum ada barang keluar' : 'Tidak ditemukan',
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
           if (isEmpty) ...[
             SizedBox(height: 8),
             Text(
-              'Mulai tambahkan data barang',
+              'Mulai catat barang yang keluar',
               style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
             SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _navigateToCreate,
               icon: Icon(Icons.add, size: 18),
-              label: Text('Tambah Data Barang'),
+              label: Text('Tambah Barang Keluar'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF11998e),
+                backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -377,7 +331,7 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: Color(0xFF11998e)),
+            CircularProgressIndicator(color: Colors.orange),
             SizedBox(height: 16),
             Text('Memuat data...', style: TextStyle(color: Colors.grey[600])),
           ],
@@ -389,7 +343,7 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
     
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: Color(0xFF11998e),
+      color: Colors.orange,
       child: ListView.builder(
         padding: EdgeInsets.only(top: 8, bottom: 100),
         itemCount: filteredData.length,
@@ -398,67 +352,12 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
     );
   }
 
-  Widget _buildStatsCard() {
-    if (allData.isEmpty) return SizedBox.shrink();
-    
-    final totalItems = allData.length;
-    final outOfStock = allData.where((item) => (item.stok ?? 0) == 0).length;
-    final lowStock = allData.where((item) => (item.stok ?? 0) > 0 && (item.stok ?? 0) <= 5).length;
-    
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem('Total', totalItems.toString(), Colors.blue),
-          _buildStatItem('Habis', outOfStock.toString(), Colors.red),
-          _buildStatItem('Sedikit', lowStock.toString(), Colors.orange),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFFFAFAFA),
       appBar: AppBar(
-        title: Text('Data Pusat'),
+        title: Text('Barang Keluar'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
@@ -481,7 +380,7 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
               controller: searchController,
               onChanged: _search,
               decoration: InputDecoration(
-                hintText: 'Cari nama, kode, atau merk...',
+                hintText: 'Cari kode atau keterangan...',
                 prefixIcon: Icon(Icons.search, size: 20),
                 suffixIcon: searchController.text.isNotEmpty
                     ? IconButton(
@@ -505,9 +404,6 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
             ),
           ),
           
-          // Stats Card
-          if (!isLoading && searchController.text.isEmpty) _buildStatsCard(),
-          
           // Content
           Expanded(child: _buildContent()),
         ],
@@ -515,8 +411,8 @@ class _ListDataPusatPageState extends State<ListDataPusatPage> {
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToCreate,
         child: Icon(Icons.add, color: Colors.white),
-        backgroundColor: Color(0xFF11998e),
-        tooltip: 'Tambah Data Pusat',
+        backgroundColor: Colors.orange,
+        tooltip: 'Tambah Barang Keluar',
       ),
     );
   }

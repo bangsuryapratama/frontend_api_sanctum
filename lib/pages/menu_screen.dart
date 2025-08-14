@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_api/pages/barangkeluar/list_barangkeluar.dart';
+import 'package:flutter_api/pages/barangmasuk/list_barangmasuk.dart';
 import 'package:flutter_api/pages/datapusat/list_data_pusat.dart';
 import 'package:flutter_api/pages/home_screen.dart';
 import 'package:flutter_api/pages/posts/list_posts_screen.dart';
@@ -26,8 +28,9 @@ class _MenuScreenState extends State<MenuScreen> with TickerProviderStateMixin {
     // Initialize pages with error boundaries
     _pages = [
       _buildPageWrapper(const HomeScreen(), 'Home'),
-      // _buildPageWrapper(const ListPostScreen(), 'Posts'),
       _buildPageWrapper(ListDataPusatPage(), 'Data Pusat'),
+      _buildPageWrapper( ListBarangMasuksPage(), 'Barang Masuk'),
+      _buildPageWrapper( ListBarangKeluarsPage(), 'Barang Keluar'),
       _buildPageWrapper(const ProfileScreen(), 'Profile'),
     ];
 
@@ -151,28 +154,34 @@ class _MenuScreenState extends State<MenuScreen> with TickerProviderStateMixin {
           fontWeight: FontWeight.w500,
           fontSize: 11,
         ),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          // BottomNavigationBarItem(
-          //   icon: Icon(Icons.article_outlined),
-          //   activeIcon: Icon(Icons.article_rounded),
-          //   label: 'Posts',
-          // ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2_outlined),
-            activeIcon: Icon(Icons.inventory_2_rounded),
-            label: 'Data Pusat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded),
-            activeIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-        ],
+    items: const [
+      BottomNavigationBarItem(
+        icon: Icon(Icons.home_outlined),
+        activeIcon: Icon(Icons.home_rounded),
+        label: 'Home',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.storage_outlined),
+        activeIcon: Icon(Icons.storage_rounded),
+        label: 'Data Pusat',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.login_outlined),
+        activeIcon: Icon(Icons.login_rounded),
+        label: 'Barang Masuk',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.logout_outlined),
+        activeIcon: Icon(Icons.logout_rounded),
+        label: 'Barang Keluar',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.person_outline_rounded),
+        activeIcon: Icon(Icons.person_rounded),
+        label: 'Profile',
+      ),
+    ]
+
       ),
     );
   }
