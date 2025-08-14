@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_api/pages/datapusat/list_data_pusat.dart';
 import 'package:flutter_api/pages/home_screen.dart';
 import 'package:flutter_api/pages/posts/list_posts_screen.dart';
-// import 'package:flutter_api/pages/posts/list_post_screen.dart';
-// import 'package:flutter_api/pages/product/product_list_screen.dart';
 import 'package:flutter_api/pages/profile_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -12,71 +12,167 @@ class MenuScreen extends StatefulWidget {
   State<MenuScreen> createState() => _MenuScreenState();
 }
 
-class _MenuScreenState extends State<MenuScreen> {
+class _MenuScreenState extends State<MenuScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
+  late PageController _pageController;
+  
+  // Pages with proper error handling
+  late final List<Widget> _pages;
 
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const ListPostScreen(),
-    // const ProductListScreen(),
-    const ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    
+    // Initialize pages with error boundaries
+    _pages = [
+      _buildPageWrapper(const HomeScreen(), 'Home'),
+      // _buildPageWrapper(const ListPostScreen(), 'Posts'),
+      _buildPageWrapper(ListDataPusatPage(), 'Data Pusat'),
+      _buildPageWrapper(const ProfileScreen(), 'Profile'),
+    ];
+
+    _pageController = PageController(initialPage: _currentIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // Wrapper untuk error handling
+  Widget _buildPageWrapper(Widget page, String pageName) {
+    return Builder(
+      builder: (context) {
+        try {
+          return page;
+        } catch (e) {
+          return _buildErrorPage(pageName, e.toString());
+        }
+      },
+    );
+  }
+
+  Widget _buildErrorPage(String pageName, String error) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 80,
+              color: Colors.red.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading $pageName',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  // Trigger rebuild
+                });
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onTabTapped(int index) {
+    if (index != _currentIndex && index >= 0 && index < _pages.length) {
+      // Haptic feedback
+      HapticFeedback.lightImpact();
+
+      setState(() {
+        _currentIndex = index;
+      });
+
+      // Smooth page transition
+      _pageController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // Biar background transparan jalan
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _pages[_currentIndex],
+      backgroundColor: const Color(0xFFFAFAFA),
+      
+      // Simple body without any complex layout
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
+          if (index >= 0 && index < _pages.length) {
+            setState(() {
+              _currentIndex = index;
+            });
+          }
+        },
+        physics: const BouncingScrollPhysics(),
+        children: _pages,
       ),
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+      
+      // Simple standard BottomNavigationBar - guaranteed no overlap
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _currentIndex,
+        onTap: _onTabTapped,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF6366F1),
+        unselectedItemColor: Colors.grey.shade600,
+        elevation: 8,
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
-            selectedItemColor: Colors.blueAccent,
-            unselectedItemColor: Colors.grey[400],
-            backgroundColor: Colors.black.withOpacity(0.8),
-            elevation: 0,
-            type: BottomNavigationBarType.fixed,
-            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.normal,
-            ),
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_rounded),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.article_outlined),
-                label: 'Posts',
-              ),
-              // BottomNavigationBarItem(
-              //   icon: Icon(Icons.shopping_bag_rounded),
-              //   label: 'Produk',
-              // ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                label: 'Profile',
-              ),
-            ],
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 11,
+        ),
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home_rounded),
+            label: 'Home',
           ),
-        ),
+          // BottomNavigationBarItem(
+          //   icon: Icon(Icons.article_outlined),
+          //   activeIcon: Icon(Icons.article_rounded),
+          //   label: 'Posts',
+          // ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory_2_outlined),
+            activeIcon: Icon(Icons.inventory_2_rounded),
+            label: 'Data Pusat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline_rounded),
+            activeIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
+        ],
       ),
     );
   }
